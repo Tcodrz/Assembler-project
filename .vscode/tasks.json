@@ -1,0 +1,45 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "build current directory",
+			"command": "C:\\Program Files\\mingw64\\bin\\gcc.exe",
+			"args": [
+				"-std=c90",
+				"-g",
+				"-Wall",
+				"-pedantic",
+				"-ansi",
+				"*.c",
+				"-o",
+				"./main.exe",
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+			},
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "compiler: \"C:\\Program Files\\mingw64\\bin\\gcc.exe\""
+		},
+		{
+			"label": "run",
+			"dependsOn": ["build current directory"],
+			"type": "shell",
+			"command": "./main.exe errorTester1.as",
+			"group": "build",
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			]
+		}
+	]
+}
