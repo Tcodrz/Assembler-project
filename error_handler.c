@@ -1,7 +1,7 @@
 #include "error_handler.h"
 
 
-void printError(Error error, Boolean * fileHasErrors)
+void printError(Error error, Boolean * hasError)
 {
     static char *filename;
 
@@ -22,13 +22,26 @@ void printError(Error error, Boolean * fileHasErrors)
         }
     }
     
-    *fileHasErrors = TRUE;
+    *hasError = TRUE;
 
     printf("\nERROR - ");
+
     switch (error.code)
     {
     case MISSING_FILENAME:
-        printf("Please provid a valid filename\n");
+        printf("Please provid a valid filename");
+        break;
+    case CANT_FIND_FILE:
+        printf("Cant find file '%s'", error.filename);
+        break;
+    case MAX_LINE_SIZE:
+        printf("Line too long at file '%s' line %d", error.filename, error.lineNumber);
+        break;
+    case INVALID_LABEL_NAME:
+        printf("Invalid label name %s at file '%s' line %d", error.message, filename, error.lineNumber);
+        break;
+    case INVALID_LABEL_POSITION:
+        printf("Invalid label position at file '%s' line %d", filename, error.lineNumber);
         break;
     default:
         printf("Unknown Error");

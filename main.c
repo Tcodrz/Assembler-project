@@ -1,4 +1,4 @@
-#include "error_handler.h"
+#include "file_parser.h"
 
 int main(int argc, char * argv[])
 {
@@ -11,14 +11,12 @@ int main(int argc, char * argv[])
         printError(*error, &fileHasErrors);
     }
 
-    if (fileHasErrors) {
-        printf("File has errors\n");
-    }
-
     while (*++argv) {
         error->code = INITIALIZE;
         error->filename = *argv;
         printError(*error, &fileHasErrors);
+
+        parseFile(*argv, FIRST_ROUND);
     }
 
 
