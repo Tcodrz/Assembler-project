@@ -43,6 +43,18 @@ void printError(Error error, Boolean * hasError)
     case INVALID_LABEL_POSITION:
         printf("Invalid label position at file '%s' line %d", filename, error.lineNumber);
         break;
+    case INVALID_COMMAND_NAME:
+        printf("Invalid command name -'%s' at file '%s' line %d", error.message, filename, error.lineNumber);
+        break;
+    case EMPTY_OPERAND:
+        printf("Invalid operand at file '%s' line %d", filename, error.lineNumber);
+        break;
+    case INVALID_STRING:
+        printf("Invalid string - \"%s\" at file %s line %d", error.message, filename, error.lineNumber);
+        break;
+    case LINE_ERROR:
+        printf("Line %d at file '%s'", error.lineNumber, filename);
+        break;
     default:
         printf("Unknown Error");
         break;

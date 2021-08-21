@@ -1,4 +1,4 @@
-#include "libs.h"
+#include "global_vars.h"
 
 
 
@@ -11,7 +11,12 @@ typedef enum {
     MAX_LINE_SIZE,
     INVALID_LABEL_NAME,
     INVALID_LABEL_POSITION,
-    VALID_LABEL
+    VALID_LABEL,
+    INVALID_COMMAND_NAME,
+    VALID_COMMAND_NAME,
+    EMPTY_OPERAND,
+    INVALID_STRING,
+    LINE_ERROR
 }  ErrorCode;
 
 typedef struct {

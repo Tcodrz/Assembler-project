@@ -32,14 +32,17 @@
 			"label": "run",
 			"dependsOn": ["build current directory"],
 			"type": "shell",
-			"command": "./main.exe ps.as",
+			"command": "./main.exe",
+			"args": [
+				"ps.as",
+			],
 			"group": "build",
 			"options": {
 				"cwd": "${fileDirname}"
 			},
 			"problemMatcher": [
 				"$gcc"
-			]
+			],
 		}
 	]
 }

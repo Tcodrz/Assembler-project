@@ -3,6 +3,5 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "global_vars.h"
 
 

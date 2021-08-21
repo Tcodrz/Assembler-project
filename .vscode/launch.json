@@ -10,7 +10,7 @@
             "type": "cppdbg",
             "request": "launch",
             "args": [
-                "ps.as"
+                "ps.as",
             ],
             "stopAtEntry": true,
             "cwd": "C:\\Users\\ttomz\\Desktop\\ASSEMBLER_V2",
