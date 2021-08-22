@@ -46,6 +46,7 @@ void parseFile(char *fileName, Round round)
                 continue;
             }
 
+            line = calloc(1, sizeof(Line));
             line = parseLine(lineText, lineCounter);
 
             if (line->hasError)
@@ -100,13 +101,13 @@ void parseFile(char *fileName, Round round)
                     /* string directive */
                     if (line->label)
                     {
-                        /* put it in symbols table with value DC 
-                        */
+                        /* put it in symbols table with value DC */
                         addLineToSymbolsTable(line->label, "data", DC);
                     }
                     /* put it in data image - validate DATA and code it in binary 
-                    addLineToDataImage(line);
                     */
+
+                    addLineToDataImage(line);
                     /* Increase DC and continue */
                     DC += (strlen(line->args[0]) -1);
                 }
@@ -126,14 +127,16 @@ void parseFile(char *fileName, Round round)
                 }
             }
 
-            /*
+            
             printLine(line);
-            */
+            
 
             lineText = readLine(file);
         }
         printSymbolsTable();
+        
         printDataImage();
+        
     }
 }
 

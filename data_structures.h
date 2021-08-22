@@ -1,30 +1,5 @@
-#include "libs.h"
+#include "error_handler.h"
 
-typedef enum
-{
-    FALSE = 0,
-    TRUE = 1
-} Boolean;
-
-typedef enum 
-{
-    INT,
-    STRING
-} DATA_TYPE;
-
-typedef enum
-{
-    COMMAND = 300,
-    DIRECTIVE
-} LineType;
-
-typedef enum
-{
-    R = 400,
-    I,
-    J,
-    DATA
-} CommandType;
 
 typedef struct
 {
@@ -107,12 +82,12 @@ static const Command COMMANDS[] = {
 };
 
 static const Directive DIRECTIVES[] = {
-    {".db", 1, -1,      INT},
-    {".dh", 2, -1,      INT},
-    {".dw", 4, -1,      INT},
-    {".asciz", 1, 1, STRING},
-    {".entry", -1, 1},
-    {".extern", -1, 1},
+    {".db",      1,     -1,     INT},
+    {".dh",      2,     -1,     INT},
+    {".dw",      4,     -1,     INT},
+    {".asciz",   1,      1,  STRING},
+    {".entry",  -1,      1,  STRING},
+    {".extern", -1,      1,  STRING},
 };
 
 void addLineToSymbolsTable(char *name, char *attr, int value);

@@ -1,4 +1,4 @@
-#include "error_handler.h"
+#include "data_structures.h"
 
 #define LINE_SIZE 80
 #define COMMENT ';'

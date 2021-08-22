@@ -1,8 +1,7 @@
 #include "data_structures.h"
 
-
-char *bin(unsigned n, int bytes);
-
+char *numberToBinary(unsigned n, int bytes);
+char *charToBinary(char c);
 
 Symbol *SymbolsTable[32];
 
@@ -14,7 +13,7 @@ void addLineToSymbolsTable(char *name, char *attr, int value)
     static int symbolsCounter = 0;
     Symbol *symbol = (Symbol *)calloc(1, sizeof(Symbol));
 
-    /* check if label exists */
+    /* TODO: check if label exists */
 
     symbol->name = name;
     symbol->val = value;
@@ -25,35 +24,67 @@ void addLineToSymbolsTable(char *name, char *attr, int value)
     SymbolsTable[symbolsCounter] = symbol;
     symbolsCounter++;
 
-    /*
-    printSymbolsTable();
-    */
-
     return;
 }
 
 void addLineToDataImage(Line *line)
 {
-    int bytes = (line->directive->byteMultiplier * 8);
-    char *binary = calloc((bytes + 1), sizeof(char));
-    int i, temp;
+
+    int i, temp, count;
     DataImage *dataImage = calloc(1, sizeof(DataImage));
     DataRow *dataRow = calloc(1, sizeof(DataRow));
+    int bytes = (line->directive->byteMultiplier * 8);
+    char *binary = calloc((bytes + 1), sizeof(char));
+    char *string = calloc(strlen(line->args[0]), sizeof(char));
 
-    /* Initializing data image block */
-    dataImage->dataRows = calloc((line->numberOfArgs), sizeof(DataRow *));
-    dataImage->size = line->numberOfArgs;
-    dataImage->startAddress = line->address;
+    if (line->directive->dataType == STRING)
+    {
+        printf("\n\n\n~!~\t\tfound a string\t\t~!~\n\n");
+        i = 0;
+        count = 0;
+        while (i < strlen(line->args[0]))
+        {
+            if (line->args[0][i] != '\"')
+            {
+                string[count] = line->args[0][i];
+                count++;
+            }
+            i++;
+        }
+        count++;
+        string[count] = '\0';
+        count = 0;
+        dataImage->size = strlen(string);
+        dataImage->startAddress = line->address;
+        dataImage->dataRows = calloc(strlen(string), sizeof(DataRow));
 
-    /* translating each argument and save it in a data row -> save data row in current data image block */
-    for (i = 0; i < line->numberOfArgs; i++)
-    { 
-        temp = atoi(line->args[i]);
-        binary = bin(temp, (bytes - 1));
-        dataRow = calloc(1, sizeof(DataRow));
-        dataRow->machineCode = calloc((bytes + 1), sizeof(char));
-        dataRow->machineCode = binary;
-        dataImage->dataRows[i] = dataRow;
+        for (i = 0; i < (strlen(string)); i++)
+        {
+            dataRow = calloc(1, sizeof(DataRow));
+            dataRow->machineCode = calloc(9, sizeof(char));
+            dataRow->machineCode = charToBinary(string[i]);
+            dataImage->dataRows[i] = dataRow;
+        }
+    }
+    else if (line->directive->dataType == INT)
+    {
+
+        /* Initializing data image block */
+        dataImage->dataRows = calloc((line->numberOfArgs), sizeof(DataRow *));
+        dataImage->size = line->numberOfArgs;
+        dataImage->startAddress = line->address;
+
+        /* translating each argument and save it in a data row -> save data row in current data image block */
+        for (i = 0; i < line->numberOfArgs; i++)
+        {
+            /* TODO: Validate argument matches data tpe size */
+            temp = atoi(line->args[i]);
+            binary = numberToBinary(temp, (bytes - 1));
+            dataRow = calloc(1, sizeof(DataRow));
+            dataRow->machineCode = calloc((bytes + 1), sizeof(char));
+            dataRow->machineCode = binary;
+            dataImage->dataRows[i] = dataRow;
+        }
     }
 
     /* Initialize or Reallocate Data image table */
@@ -69,8 +100,6 @@ void addLineToDataImage(Line *line)
     DATA_IMAGE_TABLE[DATA_BLOCK_COUNTER] = dataImage;
     DATA_BLOCK_COUNTER++;
 
-    printDataImage();
-
     return;
 }
 
@@ -78,11 +107,12 @@ void printDataImage()
 {
     int i, j;
     DataImage *block;
-    DataRow * row;
-    printf("DATA BLOCK COUNTER: %d\n\n", DATA_BLOCK_COUNTER);
-    printf("\nADDRESS\tCODE\n");
+    DataRow *row;
+    printf("\n\nDATA BLOCK COUNTER: %d\n\n", DATA_BLOCK_COUNTER);
+    printf("ADDRESS\tCODE\n");
     for (i = 0; i < DATA_BLOCK_COUNTER; i++)
     {
+        printf("\bBLOCK %d\n\n", i);
         block = calloc(1, sizeof(DataImage));
         block = DATA_IMAGE_TABLE[i];
         printf("%d", block->startAddress);
@@ -112,7 +142,7 @@ void printSymbolsTable()
     }
 }
 
-char *bin(unsigned n, int bytes)
+char *numberToBinary(unsigned n, int bytes)
 {
     char *binary = calloc(33, sizeof(char));
     int j = 0;
@@ -123,5 +153,30 @@ char *bin(unsigned n, int bytes)
         j++;
     }
     binary[++j] = '\0';
+    return binary;
+}
+
+char *charToBinary(char c)
+{
+    int i, bin;
+    char ch = c;
+    char *binary = calloc(9, sizeof(char));
+
+    if (!isalpha(c))
+    {
+        return NULL;
+    }
+
+    for (i = 0; i < 8; i++)
+    {
+        bin = ((ch << i) & 0x80) ? 1 : 0;
+        binary[i] = bin + '0';
+    }
+
+    /*
+    printf("%s\n", binary);
+*/
+    binary[9] = '\0';
+
     return binary;
 }
