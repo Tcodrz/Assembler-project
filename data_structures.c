@@ -7,6 +7,7 @@ char *numberToBinaryV2(int n, int bytes);
 Boolean isExternalSymbol(char *symbolName);
 long convertCodeRowToLong(char *array[]);
 unsigned int binaryToUnsignedInt(const char *binary);
+void bin2Hex(char *str, FILE *);
 
 Symbol **SYMBOL_TABLE = NULL;
 static int SYMBOLS_COUNTER = 0;
@@ -19,6 +20,9 @@ static int CODE_ROW_COUNTER = 0;
 
 ExternalCommand **EXTERNAL_COMMANDS = NULL;
 static int EXTERNAL_COMMANDS_COUNTER = 0;
+
+ExternalCommand **ENTRY_COMMANDS = NULL;
+static int ENTRY_COMMAND_COUNTER = 0;
 
 /* Add line with label to symbols table */
 Error *addLineToSymbolsTable(char *name, char *attr, int value)
@@ -63,7 +67,6 @@ void addLineToCodeImage(Line *line)
     int destination;
     CodeRow *codeRow = calloc(1, sizeof(CodeRow));
     Symbol *symbol = calloc(1, sizeof(Symbol));
-
 
     codeRow->lineIndex = line->index;
     if (line->command->type == R)
@@ -176,6 +179,8 @@ Error *addLineToDataImage(Line *line)
     char *str = NULL;
     DataImage *block = calloc(1, sizeof(DataImage));
     Error *error = calloc(1, sizeof(Error));
+
+    block->byteMulti = line->directive->byteMultiplier;
 
     if (line->directive->dataType == STRING)
     {
@@ -293,8 +298,7 @@ void updateJCommandAddress(int lineIndex, char *label)
             symbol = getSymbol(label);
             if (strcmp(symbol->attribute[0], "external") == 0)
             {
-                CODE_IMAGE_TABLE[i]->address = 0;
-                exCommand->commandAddress = CODE_IMAGE_TABLE[i]->address;
+                exCommand->commandAddress = CODE_IMAGE_TABLE[i]->memoryAddress;
                 exCommand->labelName = label;
                 if (!EXTERNAL_COMMANDS)
                 {
@@ -313,6 +317,31 @@ void updateJCommandAddress(int lineIndex, char *label)
             }
         }
     }
+}
+
+void addLineToEntryList(Line *line)
+{
+    int i;
+    ExternalCommand *entryCommand = calloc(1, sizeof(ExternalCommand));
+
+    for (i = 0; i < SYMBOLS_COUNTER; i++)
+    {
+        if (strcmp(SYMBOL_TABLE[i]->name, line->operands[0]->valString) == 0)
+        {
+            entryCommand->commandAddress = SYMBOL_TABLE[i]->val;
+            entryCommand->labelName = line->operands[0]->valString;
+        }
+    }
+    if (!ENTRY_COMMANDS)
+    {
+        ENTRY_COMMANDS = calloc(1, sizeof(ExternalCommand));
+    }
+    else
+    {
+        ENTRY_COMMANDS = realloc(ENTRY_COMMANDS, (ENTRY_COMMAND_COUNTER * sizeof(ExternalCommand)) + 1);
+    }
+    ENTRY_COMMANDS[ENTRY_COMMAND_COUNTER] = entryCommand;
+    ENTRY_COMMAND_COUNTER++;
 }
 
 Boolean symbolExists(char *symbolName)
@@ -380,6 +409,220 @@ void resetDataStructures()
     DATA_BLOCK_COUNTER = 0;
     CODE_IMAGE_TABLE = NULL;
     CODE_ROW_COUNTER = 0;
+}
+
+void writeFiles(int ic, int dc, char *filename)
+{
+    int i, j, k, endOfCode;
+    int b;
+    int counter = 0;
+    char *ramWord = calloc(33, sizeof(char));
+    char *byte = calloc(9, sizeof(char));
+    char *temp = calloc(33, sizeof(char));
+    char *objectFilename, *entFilename, *extFilename;
+    FILE *objectFile, *entFile, *extFile;
+
+    /* remove the .as file extention */
+    filename = substring(filename, 0, (strlen(filename) - 4));
+
+    /* Create output files */
+    objectFilename = calloc(strlen(filename) + 3, sizeof(char));
+    entFilename = calloc(strlen(filename) + 4, sizeof(char));
+    extFilename = calloc(strlen(filename) + 4, sizeof(char));
+
+    strcat(objectFilename, filename);
+    strcat(objectFilename, ".ob");
+
+    strcat(entFilename, filename);
+    strcat(entFilename, ".ent");
+
+    strcat(extFilename, filename);
+    strcat(extFilename, ".ext");
+
+    objectFile = fopen(objectFilename, "w+");
+    entFile = fopen(entFilename, "w+");
+    extFile = fopen(extFilename, "w+");
+
+    /* Print Code Image to Object file */
+    fprintf(objectFile, "\t%d %d\n", (ic - 100), dc);
+    for (i = 0; i < CODE_ROW_COUNTER; i++)
+    {
+        fprintf(objectFile, "0%d ", CODE_IMAGE_TABLE[i]->memoryAddress);
+        if (CODE_IMAGE_TABLE[i]->type == R)
+        {
+            ramWord = calloc(33, sizeof(char));
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->opcode, 6);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->rs, 5);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->rt, 5);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->rd, 5);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->funct, 5);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->unused, 6);
+            strcat(ramWord, temp);
+
+            byte = substring(ramWord, 24, 32);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 16, 23);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 8, 15);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 0, 7);
+            bin2Hex(byte, objectFile);
+            fprintf(objectFile, "\n");
+        }
+        else if (CODE_IMAGE_TABLE[i]->type == I)
+        {
+            ramWord = calloc(33, sizeof(char));
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->opcode, 6);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->rs, 5);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->rt, 5);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->immed, 16);
+            strcat(ramWord, temp);
+
+            byte = substring(ramWord, 24, 32);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 16, 23);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 8, 15);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 0, 7);
+            bin2Hex(byte, objectFile);
+
+            fprintf(objectFile, "\n");
+        }
+        else if (CODE_IMAGE_TABLE[i]->type == J)
+        {
+            ramWord = calloc(33, sizeof(char));
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->opcode, 6);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->reg, 1);
+            strcat(ramWord, temp);
+            temp = numberToBinary(CODE_IMAGE_TABLE[i]->reg, 25);
+            strcat(ramWord, temp);
+
+            byte = substring(ramWord, 24, 32);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 16, 23);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 8, 15);
+            bin2Hex(byte, objectFile);
+            byte = substring(ramWord, 0, 7);
+            bin2Hex(byte, objectFile);
+            fprintf(objectFile, "\n");
+        }
+    }
+
+    /* Print Data Image to Object File */
+    endOfCode = CODE_IMAGE_TABLE[i - 1]->memoryAddress + 4;
+    fprintf(objectFile, "0%d ", endOfCode);
+
+    for (i = 0; i < DATA_BLOCK_COUNTER; i++)
+    {
+        for (j = 0; j < DATA_IMAGE_TABLE[i].size; j++)
+        {
+            if (DATA_IMAGE_TABLE[i].dataRows[j].type == INT)
+            {
+                if ((counter % 4 == 0) && (counter != 0))
+                {
+                    fprintf(objectFile, "\n");
+                    endOfCode += 4;
+                    fprintf(objectFile, "0%d ", endOfCode);
+                }
+
+                temp = numberToBinary(DATA_IMAGE_TABLE[i].dataRows[j].num, (DATA_IMAGE_TABLE[i].byteMulti * 8));
+
+                if (DATA_IMAGE_TABLE[i].byteMulti == 1)
+                {
+                    bin2Hex(temp, objectFile);
+                    counter++;
+                }
+                else if (DATA_IMAGE_TABLE[i].byteMulti == 2)
+                {
+                    b = DATA_IMAGE_TABLE[i].byteMulti * 8;
+                    for (k = 0; k < DATA_IMAGE_TABLE[i].byteMulti; k++)
+                    {
+                        byte = substring(temp, (b - 8), (b - 1));
+                        bin2Hex(byte, objectFile);
+                        counter++;
+                        if ((counter % 4 == 0) && (counter != 0))
+                        {
+                            fprintf(objectFile, "\n");
+                            endOfCode += 4;
+                            fprintf(objectFile, "0%d ", endOfCode);
+                        }
+                        b /= 2;
+                    }
+                }
+                else if (DATA_IMAGE_TABLE[i].byteMulti == 4)
+                {
+                    b = DATA_IMAGE_TABLE[i].byteMulti * 8;
+                    for (k = 0; k < DATA_IMAGE_TABLE[i].byteMulti; k++)
+                    {
+                        byte = substring(temp, (b - 8), (b - 1));
+                        bin2Hex(byte, objectFile);
+                        counter++;
+                        if ((counter % 4 == 0) && (counter != 0))
+                        {
+                            fprintf(objectFile, "\n");
+                            endOfCode += 4;
+                            fprintf(objectFile, "0%d ", endOfCode);
+                        }
+                        b /= 2;
+                    }
+                }
+            }
+            else if (DATA_IMAGE_TABLE[i].dataRows[j].type == STRING)
+            {
+                if ((counter % 4 == 0) && (counter != 0))
+                {
+                    fprintf(objectFile, "\n");
+                    endOfCode += 4;
+                    fprintf(objectFile, "0%d ", endOfCode);
+                }
+                temp = charToBinary(DATA_IMAGE_TABLE[i].dataRows[j].c);
+                bin2Hex(temp, objectFile);
+                counter++;
+            }
+        }
+    }
+    fprintf(objectFile, "\n");
+    fclose(objectFile);
+
+    for (i = 0; i < EXTERNAL_COMMANDS_COUNTER; i++)
+    {
+
+        fprintf(extFile, "%s ", EXTERNAL_COMMANDS[i]->labelName);
+        fprintf(extFile, "0%d\n ", EXTERNAL_COMMANDS[i]->commandAddress);
+    }
+
+    for (i = 0; i < ENTRY_COMMAND_COUNTER; i++)
+    {
+        fprintf(entFile, "%s ", ENTRY_COMMANDS[i]->labelName);
+        fprintf(entFile, "0%d\n", ENTRY_COMMANDS[i]->commandAddress);
+    }
+}
+
+void bin2Hex(char *str, FILE *file)
+{
+    char *a = calloc(9, sizeof(char));
+    strcpy(a, str);
+    int b;
+    int num = 0;
+    do
+    {
+        b = *a == '1' ? 1 : 0;
+        num = (num << 1) | b;
+        a++;
+    } while (*a);
+
+    fprintf(file, "%02X ", num);
 }
 
 /**************************************************************************/
@@ -524,16 +767,10 @@ void printDataImage()
     printf("ADDRESS\t\tCODE\n");
     for (i = 0; i < DATA_BLOCK_COUNTER; i++)
     {
-        /*
-        block = calloc(1, sizeof(DataImage));
-        */
         block = DATA_IMAGE_TABLE[i];
         printf("%d", block.startAddress);
         for (j = 0; j < block.size; j++)
         {
-            /*
-            row = calloc(1, sizeof(DataRow));
-            */
             row = block.dataRows[j];
             if (row.type == STRING)
             {
@@ -541,19 +778,19 @@ void printDataImage()
             }
             else if (row.type == INT)
             {
-                printf("\t\t%s\n", numberToBinary(row.num, 16));
+                printf("\t\t%s\n", numberToBinary(row.num, (block.byteMulti * 8)));
             }
         }
     }
 
-    printf("\n\nDONE!\n\n");
-    printf("\n\n");
 }
 
 void printSymbolsTable()
 {
     int i, j;
-    printf("\n\n");
+    printf("\n/*************************************************************/\n");
+    printf(" *                      SYMBOLS TABLE                        *\n");
+    printf("/*************************************************************/\n");
     printf("NAME\tVAL\tATTR\n");
     for (i = 0; i < SYMBOLS_COUNTER; i++)
     {
@@ -580,7 +817,7 @@ char *numberToBinary(int n, int bytes)
 {
     char *binary = calloc((bytes + 1), sizeof(char));
     int j = 0;
-    int i;
+    unsigned int i;
     for (i = 1 << (bytes - 1); i > 0; i = i / 2)
     {
         binary[j] = (n & i) ? '1' : '0';

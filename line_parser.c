@@ -6,7 +6,6 @@ Line *parseLine(char *line, int index)
     char *commandName;
     Boolean lineHasLabel = FALSE;
     Boolean lineHasError = FALSE;
-    Boolean insideString = FALSE;
     int labelEndPosition = -1, lastPosition = -1;
     int numberOfArgs = 0;
     char **args = NULL;

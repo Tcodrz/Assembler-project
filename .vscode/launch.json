@@ -10,7 +10,7 @@
             "type": "cppdbg",
             "request": "launch",
             "args": [
-                "errorTester1.as",
+                "ps.as",
             ],
             "stopAtEntry": true,
             "cwd": "C:\\Users\\ttomz\\Desktop\\ASSEMBLER_V2",

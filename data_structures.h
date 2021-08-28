@@ -65,6 +65,7 @@ typedef struct
     DataRow *dataRows;
     int size;
     int startAddress;
+    int byteMulti;
 } DataImage;
 
 typedef struct
@@ -188,3 +189,7 @@ void resetDataStructures();
 Line *parseLine(char * line, int lineNumber);
 
 void parseFile(char *fileName);
+
+void writeFiles(int ic, int dc, char * filename);
+
+void addLineToEntryList(Line * line);

@@ -41,7 +41,7 @@ ValidLabel:   stop
         mvhi    $$18,$19
 
 ;###############  Fun with commas:      ###############
-        add     $0 ,$1 ,$2 , 
+        add     $0 ,$1 ,$2
         sub     $3 ,,$4 ,$5
         and     ,$6 ,$7 ,$8
         or      $9 ,$1,0,$11

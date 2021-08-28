@@ -7,7 +7,6 @@ static int LINE_COUNTER = 0;
 
 void parseFile(char *fileName)
 {
-    int i;
     int IC = INIT_IC;
     int DC = INIT_DC;
     int lineCounter = 0;
@@ -19,12 +18,6 @@ void parseFile(char *fileName)
     Line *parsedLine = (Line *)calloc(1, sizeof(line));
 
     FILE *file = NULL;
-
-    /*
-    LINE_COUNTER = 0;
-    PARSED_LINES = NULL;
-    */
-
     file = fopen(fileName, "r");
 
     if (file == NULL)
@@ -36,11 +29,18 @@ void parseFile(char *fileName)
     }
     else
     {
-        while (fgets(rawLine, LINE_SIZE, file) != NULL)
+        while (fgets(rawLine, (LINE_SIZE * 2), file) != NULL)
         {
-
-            lineText = trim(rawLine);
             lineCounter++;
+            lineText = trim(rawLine);
+
+            if (strlen(lineText) > LINE_SIZE)
+            {
+                error->code  = MAX_LINE_SIZE;
+                error->lineNumber = lineCounter;
+                printError(*error, &lineHasError);
+                continue;
+            }
 
             if (lineIsEmpty(lineText) || lineIsComment(lineText))
             {
@@ -48,7 +48,6 @@ void parseFile(char *fileName)
                 continue;
             }
 
-            line->hasError = FALSE;
             line = parseLine(lineText, lineCounter);
             line->index = lineCounter;
 
@@ -170,7 +169,10 @@ void parseFile(char *fileName)
         printCodeImage();
         printDataImage();
 
+        writeFiles(IC, DC, fileName);
+
         resetDataStructures();
+        free(PARSED_LINES);
         PARSED_LINES = NULL;
         LINE_COUNTER = 0;
 
@@ -200,6 +202,7 @@ Error *secondRound(char *filename)
                 if (symbolExists(PARSED_LINES[i]->operands[0]->valString))
                 {
                     addAttributeToSYmbol(PARSED_LINES[i]->operands[0]->valString, "entry");
+                    addLineToEntryList(PARSED_LINES[i]);
                 }
                 else
                 {
