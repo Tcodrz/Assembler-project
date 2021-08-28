@@ -16,10 +16,8 @@ void printError(Error error, Boolean * hasError)
     }
     else if (error.code == FINISH_FILE)
     {
-        if (filename)
-        {
-            free(filename);
-        }
+        printf("File %s finished\n", filename);
+        return;
     }
     
     *hasError = TRUE;
@@ -35,10 +33,10 @@ void printError(Error error, Boolean * hasError)
         printf("Cant find file '%s'", error.filename);
         break;
     case MAX_LINE_SIZE:
-        printf("Line too long at file '%s' line %d", error.filename, error.lineNumber);
+        printf("Line too long at file '%s' line %d", filename, error.lineNumber);
         break;
     case INVALID_LABEL_NAME:
-        printf("Invalid label name %s at file '%s' line %d", error.message, filename, error.lineNumber);
+        printf("Invalid label name '%s' at file '%s' line %d", error.message, filename, error.lineNumber);
         break;
     case INVALID_LABEL_POSITION:
         printf("Invalid label position at file '%s' line %d", filename, error.lineNumber);
@@ -50,10 +48,22 @@ void printError(Error error, Boolean * hasError)
         printf("Invalid operand at file '%s' line %d", filename, error.lineNumber);
         break;
     case INVALID_STRING:
-        printf("Invalid string - \"%s\" at file %s line %d", error.message, filename, error.lineNumber);
+        printf("Invalid string - %s at file %s line %d", error.message, filename, error.lineNumber);
         break;
     case LINE_ERROR:
         printf("Line %d at file '%s'", error.lineNumber, filename);
+        break;
+    case LABEL_EXISTS:
+        printf("Duplicate label name at file '%s' line %d", filename, error.lineNumber);
+        break;
+    case SYMBOL_NOT_FOUND:
+        printf("Symbol not found but was use in file '%s' line %d", filename, error.lineNumber);
+        break;
+    case CODE_ROW_NOT_FOUND:
+        printf("Couldnt find code row at file '%s' line %d", filename, error.lineNumber);
+        break;
+    case EXTERNAL_LABEL_IN_CONDITIONAL_CMD:
+        printf("Using external label in conditional command is not allowed at file '%s' line %d", filename, error.lineNumber);
         break;
     default:
         printf("Unknown Error");

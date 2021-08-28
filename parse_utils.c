@@ -1,13 +1,16 @@
-#include "parse_utils.h"
+#include "data_structures.h"
 
-static const char *RESERVED_KEYWORDS[27] = {"add", "sub", "and", "or", "nor", "move", "mvhi", "mvlo", "addi", "subi", "andi", "ori", "nori", "bne", "beq", "blt", "bgt", "lb", "sb", "lw", "sw", "lh", "sh", "jmp", "la", "call", "stop"};
+static const char *RESERVED_KEYWORDS[] = {"add", "sub", "and", "or", "nor", "move", "mvhi", "mvlo", "addi", "subi", "andi", "ori", "nori", "bne", "beq", "blt", "bgt", "lb", "sb", "lw", "sw", "lh", "sh", "jmp", "la", "call", "stop", "asciz", "db", "dh", "dw", "entry", "extern"};
 
-/* reads one line and return it as a string */
+/* reads one line and return it as a string 
 char *readLine(FILE *file)
 {
-    int count = 0;
     char c;
-    char *line = calloc(LINE_SIZE, sizeof(char));
+    int count = 0;
+    char line[LINE_SIZE];
+    char *finishedLine = NULL;
+    printf("INSIDE READLINE\n\n");
+
     while ((c = fgetc(file)) != '\n')
     {
         if (c == EOF)
@@ -17,8 +20,15 @@ char *readLine(FILE *file)
         strncat(line, &c, 1);
         count++;
     }
-    return line;
+
+    if (count <= LINE_SIZE)
+    {
+        finishedLine = calloc(strlen(line), sizeof(char));
+        strcpy(finishedLine, line);
+    }
+    return finishedLine;
 }
+*/
 
 /* Return true if line is empty */
 Boolean lineIsEmpty(char *line)
@@ -52,79 +62,68 @@ Boolean lineIsComment(char *line)
 }
 
 /* takes a command name and return the command or NULL */
-Command *getCommand(char * commandName)
+Command *getCommand(char *commandName)
 {
-    Command * command = (Command *) calloc(1, sizeof(command));
+    Command *command = calloc(1, sizeof(Command));
     int i;
 
     for (i = 0; i < COMMANDS_AMOUNT; i++)
-    {
         if (strcmp(commandName, COMMANDS[i].name) == 0)
         {
-            command->name = COMMANDS[i].name;
-            command->type = COMMANDS[i].type;
+
             command->funct = COMMANDS[i].funct;
+            command->name = COMMANDS[i].name;
             command->opcode = COMMANDS[i].opcode;
+            command->type = COMMANDS[i].type;
+            break;
         }
-    }
 
     return command;
 }
 
 /* takes a directive name and return the directive or NULL */
-Directive * getDirective(char * directiveName) 
-{   
-    Directive * directive = (Directive *) calloc(1, sizeof(Directive));
+Directive *getDirective(char *directiveName)
+{
+    Directive *directive = calloc(1, sizeof(Directive));
     int i;
 
     for (i = 0; i < DIRECTIVES_AMOUNT; i++)
-    {
         if (strcmp(directiveName, DIRECTIVES[i].name) == 0)
         {
-            directive->name = DIRECTIVES[i].name;
             directive->byteMultiplier = DIRECTIVES[i].byteMultiplier;
-            directive->numberOfAllowedOpernads = DIRECTIVES[i].numberOfAllowedOpernads;
             directive->dataType = DIRECTIVES[i].dataType;
+            directive->name = DIRECTIVES[i].name;
+            directive->numberOfAllowedOpernads = DIRECTIVES[i].numberOfAllowedOpernads;
+            break;
         }
-    }
 
     return directive;
 }
 
 /* validates command name */
-Error * validateCommandName(char * command)
+Boolean validateCommandName(char *command)
 {
-    Boolean commandExists = FALSE;
-    Boolean directiveExists = FALSE;
-    Error * error = (Error *) calloc (1, sizeof(Error));
     int i;
 
     /* search commands */
-    for (i = 0; i < COMMANDS_AMOUNT; i++) {
+    for (i = 0; i < COMMANDS_AMOUNT; i++)
+    {
         if (strcmp(command, COMMANDS[i].name) == 0)
         {
-            commandExists = TRUE;
+            return TRUE;
         }
     }
 
     /* search directives */
-    for (i = 0; i < DIRECTIVES_AMOUNT; i++) {
+    for (i = 0; i < DIRECTIVES_AMOUNT; i++)
+    {
         if (strcmp(command, DIRECTIVES[i].name) == 0)
         {
-            directiveExists = TRUE;
+            return TRUE;
         }
     }
 
-    if (!commandExists && !directiveExists) {
-        error->code = INVALID_COMMAND_NAME;
-    } 
-    else 
-    {
-        error->code = VALID_COMMAND_NAME;
-    }
-        error->message = command;
-
-    return error;
+    return FALSE;
 }
 
 /* validate label position and name */
@@ -134,6 +133,7 @@ Error *validateLabel(char *line)
     char *label = (char *)calloc(MAX_LABEL_SIZE, sizeof(char));
     Boolean validLabelPosition = FALSE;
     Boolean validLabelName = FALSE;
+    Boolean reservedKeyword = FALSE;
 
     int i, j;
     for (i = 0; i < strlen(line); i++)
@@ -178,15 +178,12 @@ Error *validateLabel(char *line)
         validLabelName = TRUE;
     }
 
-    /* check label is not a reserved keyword */
-    for (i = 0; i < 27; i++)
+    reservedKeyword = isReservedKeyword(label);
+    if (reservedKeyword)
     {
-        if (strcmp(label, RESERVED_KEYWORDS[i]) == 0)
-        {
-            validLabelName = FALSE;
-            error->code = INVALID_LABEL_NAME;
-            error->message = label;
-        }
+        validLabelName = FALSE;
+        error->code = INVALID_LABEL_NAME;
+        error->message = label;
     }
 
     if (validLabelName && validLabelPosition)
@@ -198,10 +195,38 @@ Error *validateLabel(char *line)
     return error;
 }
 
-Error * validateString(char * string)
+Boolean isReservedKeyword(char *string)
 {
-    Error * error = (Error *) calloc(1, sizeof(Error));
+    int i;
 
+    if (!string)
+    {
+        return FALSE;
+    }
+
+    for (i = 0; i < 33; i++)
+    {
+        if (strcmp(RESERVED_KEYWORDS[i], string) == 0)
+        {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+Error *validateString(char *string)
+{
+    /* TODO: validate string is not a reserved keyword */
+    Error *error = (Error *)calloc(1, sizeof(Error));
+
+    if (string[0] != '\"' || string[strlen(string) - 1] != '\"')
+    {
+        error->code = INVALID_STRING;
+        return error;
+    }
+
+    error->code = VALID_STRING;
     return error;
 }
 
@@ -210,7 +235,6 @@ char *substring(char *string, int start, int end)
 {
     char *s = (char *)calloc(MAX_LINE_SIZE, sizeof(char));
     int i = 0;
-
 
     while (start <= end)
     {

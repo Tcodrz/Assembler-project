@@ -1,25 +1,25 @@
-#include "line_parser.h"
+#include "data_structures.h"
 
 Line *parseLine(char *line, int index)
 {
-    Error *error = (Error *)calloc(1, sizeof(Error));
-    Line *parsedLine = (Line *)calloc(1, sizeof(Line));
-    Command *command = (Command *)calloc(1, sizeof(Command));
-    Directive *directive = (Directive *)calloc(1, sizeof(Directive));
-
-    Boolean lineHasLabel;
-    Boolean lineHasError;
-    int labelEndPosition = -1, lastPosition = -1;
+    int i;
     char *commandName;
-    char **args = (char **)calloc(1, sizeof(char *));
-    char *arg = (char *)calloc(MAX_LINE_SIZE, sizeof(char));
+    Boolean lineHasLabel = FALSE;
+    Boolean lineHasError = FALSE;
+    Boolean insideString = FALSE;
+    int labelEndPosition = -1, lastPosition = -1;
     int numberOfArgs = 0;
-    Boolean argSeperator = FALSE;
-    int i, j;
+    char **args = NULL;
+    char *arg = calloc(MAX_LABEL_SIZE, sizeof(char));
+    Operand *operand = calloc(1, sizeof(Operand));
+    Command *command = calloc(1, sizeof(Command));
+    Directive *directive = calloc(1, sizeof(Directive));
+    Error *error = calloc(1, sizeof(Error));
+    Line *parsedLine = calloc(1, sizeof(Line));
+
 
     lineHasLabel = FALSE;
     lineHasError = FALSE;
-
     parsedLine->index = index;
     parsedLine->hasError = FALSE;
 
@@ -77,34 +77,27 @@ Line *parseLine(char *line, int index)
     if (commandName[0] == DIRECTIVE_SYMBOL)
     {
         parsedLine->type = DIRECTIVE;
+        parsedLine->isDirective = TRUE;
+        directive = getDirective(commandName);
+        if (directive)
+            parsedLine->directive = directive;
     }
     else
     {
         parsedLine->type = COMMAND;
-    }
-
-    error = validateCommandName(commandName);
-
-    if (error->code == VALID_COMMAND_NAME)
-    {
+        parsedLine->isCommand = TRUE;
         command = getCommand(commandName);
-        directive = getDirective(commandName);
-        parsedLine->directive = directive;
-        parsedLine->command = command;
+        if (command)
+            parsedLine->command = command;
     }
-    else
+
+    if (!validateCommandName(commandName))
     {
+        error->code = INVALID_COMMAND_NAME;
         error->lineNumber = index;
         printError(*error, &lineHasError);
-    }
-
-    if (command->name && !directive->name)
-    {
-        parsedLine->isCommand = TRUE;
-    }
-    else if (directive->name && !command->name)
-    {
-        parsedLine->isDirective = TRUE;
+        parsedLine->hasError = TRUE;
+        return parsedLine;
     }
 
     line = trim(substring(line, lastPosition, MAX_LINE_SIZE));
@@ -113,66 +106,63 @@ Line *parseLine(char *line, int index)
     if (strlen(line) > 0)
     {
         numberOfArgs = 1;
-        lastPosition = 0;
         i = 0;
+
         while (i < strlen(line))
         {
             if (line[i] == ARG_SEPERATOR)
             {
-                if (argSeperator)
-                {
-                    error->code = EMPTY_OPERAND;
-                    error->lineNumber = index;
-                    printError(*error, &lineHasError);
-                }
-                else
-                {
-                    argSeperator = TRUE;
-                    arg = substring(line, lastPosition, (i - 1));
-                    lastPosition = (i + 1);
-
-                    if (strlen(arg) > 0)
-                    {
-                        argSeperator = FALSE;
-                        args[numberOfArgs - 1] = trim(arg);
-                        numberOfArgs++;
-                    }
-                }
+                numberOfArgs++;
             }
             i++;
         }
 
-        arg = substring(line, lastPosition, i);
-        args[numberOfArgs - 1] = trim(arg);
+        args = calloc(numberOfArgs, sizeof(char));
+        arg = strtok(line, ",");
+        args[0] = arg;
+        i = 1;
+        while (i < numberOfArgs)
+        {
+            arg = strtok(NULL, ",");
+            args[i] = arg;
+            i++;
+        }
 
-        /* Validate operands not empty */
+        parsedLine->operands = calloc(numberOfArgs, sizeof(Operand));
+        parsedLine->numberOfArgs = numberOfArgs;
+
         for (i = 0; i < numberOfArgs; i++)
         {
-            if (strlen(args[i]) < 1)
+            operand = calloc(1, sizeof(Operand));
+            args[i] = trim(args[i]);
+            if (isRegistry(args[i]))
             {
-                error->code = EMPTY_OPERAND;
-                error->lineNumber = index;
-                printError(*error, &lineHasError);
+                args[i] = substring(args[i], 1, strlen(args[i]));
+                operand->valInt = atoi(args[i]);
+                operand->type = INT;
             }
-            for (j = 0; j < strlen(args[i]); j++)
+            else if (atoi(args[i]))
             {
-                if (isspace(args[i][j]))
-                {
-                    error->code = EMPTY_OPERAND;
-                    error->lineNumber = index;
-                    printError(*error, &lineHasError);
-                    break;
-                }
+                operand->valInt = atoi(args[i]);
+                operand->type = INT;
             }
+            else
+            {
+                operand->type = STRING;
+                operand->valString = calloc(strlen(args[i]), sizeof(char));
+                strcpy(operand->valString, args[i]);
+            }
+            parsedLine->operands[i] = operand;
         }
-        parsedLine->args = args;
     }
-    parsedLine->numberOfArgs = numberOfArgs;
+
+    parsedLine->args = args;
 
     if (lineHasError)
     {
         parsedLine->hasError = TRUE;
     }
+
 
     return parsedLine;
 }

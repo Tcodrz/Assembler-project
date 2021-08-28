@@ -1,7 +1,5 @@
 #include "libs.h"
 
-
-
 typedef enum {
     INITIALIZE = 100,
     FINISH_FILE,
@@ -14,8 +12,15 @@ typedef enum {
     INVALID_COMMAND_NAME,
     VALID_COMMAND_NAME,
     EMPTY_OPERAND,
+    LINE_ERROR,
     INVALID_STRING,
-    LINE_ERROR
+    VALID_STRING,
+    LABEL_EXISTS,
+    SYMBOL_ADDED_TO_TABLE,
+    SYMBOL_NOT_FOUND,
+    CODE_ROW_NOT_FOUND,
+    EXTERNAL_LABEL_IN_CONDITIONAL_CMD,
+    SUCCESS
 }  ErrorCode;
 
 typedef struct {

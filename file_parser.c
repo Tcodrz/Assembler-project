@@ -1,18 +1,30 @@
-#include "file_parser.h"
+#include "data_structures.h"
 
-void printLine(Line *line);
+Error *secondRound(char *filename);
 
-void parseFile(char *fileName, Round round)
+Line **PARSED_LINES = NULL;
+static int LINE_COUNTER = 0;
+
+void parseFile(char *fileName)
 {
+    int i;
     int IC = INIT_IC;
     int DC = INIT_DC;
     int lineCounter = 0;
-    char *lineText;
-    Error *error = (Error *)calloc(1, sizeof(Error));
     Boolean lineHasError = FALSE;
+    char *lineText = calloc(LINE_SIZE, sizeof(char));
+    char *rawLine = calloc(LINE_SIZE, sizeof(char));
+    Error *error = (Error *)calloc(1, sizeof(Error));
     Line *line = (Line *)calloc(1, sizeof(line));
+    Line *parsedLine = (Line *)calloc(1, sizeof(line));
 
     FILE *file = NULL;
+
+    /*
+    LINE_COUNTER = 0;
+    PARSED_LINES = NULL;
+    */
+
     file = fopen(fileName, "r");
 
     if (file == NULL)
@@ -20,157 +32,232 @@ void parseFile(char *fileName, Round round)
         error->code = CANT_FIND_FILE;
         error->filename = fileName;
         printError(*error, &lineHasError);
+        return;
     }
     else
     {
-        lineText = readLine(file);
-
-        while (lineText)
+        while (fgets(rawLine, LINE_SIZE, file) != NULL)
         {
-            line->index = lineCounter;
-            line->hasError = FALSE;
-            lineCounter++;
 
-            if (strlen(lineText) > LINE_SIZE)
-            {
-                error->code = MAX_LINE_SIZE;
-                error->filename = fileName;
-                printError(*error, &lineHasError);
-                lineText = readLine(file);
-                continue;
-            }
+            lineText = trim(rawLine);
+            lineCounter++;
 
             if (lineIsEmpty(lineText) || lineIsComment(lineText))
             {
-                lineText = readLine(file);
+                printf("%d - EMPTY OR COMMAND\n", lineCounter);
                 continue;
             }
 
-            line = calloc(1, sizeof(Line));
+            line->hasError = FALSE;
             line = parseLine(lineText, lineCounter);
+            line->index = lineCounter;
 
             if (line->hasError)
             {
-                error->code = LINE_ERROR;
-                error->lineNumber = lineCounter;
-                printError(*error, &lineHasError);
-                lineText = readLine(file);
                 continue;
+            }
+
+            if (!PARSED_LINES)
+            {
+                PARSED_LINES = calloc(1, sizeof(Line));
+            }
+            else
+            {
+                PARSED_LINES = realloc(PARSED_LINES, (LINE_COUNTER * sizeof(Line)) + 1);
             }
 
             if (line->isCommand)
             {
+                /* TODO: Check number of allowed operands */
                 if (line->label)
                 {
-                    /* put it in symbols table with attribute 'code' and value of IC  */
-                    addLineToSymbolsTable(line->label, "code", IC);
+                    error = addLineToSymbolsTable(line->label, "code", IC);
+                    if (error->code == LABEL_EXISTS)
+                    {
+                        error->lineNumber = line->index;
+                        printError(*error, &lineHasError);
+                        continue;
+                    }
                 }
-                /* analyze and validate operands data */
 
-                /* code it in binary and put it in memory image */
-
-                /* update IC */
                 line->address = IC;
                 IC += 4;
+                addLineToCodeImage(line);
             }
             else if (line->isDirective)
             {
+
+                /* data drective  */
                 if ((strcmp(line->directive->name, ".db") == 0) ||
                     (strcmp(line->directive->name, ".dh") == 0) ||
                     (strcmp(line->directive->name, ".dw") == 0))
                 {
                     line->address = DC;
-                    /* data drective */
                     if (line->label)
                     {
-                        /* put it in symbols table with value DC 
-                        */
                         addLineToSymbolsTable(line->label, "data", DC);
                     }
+                    error = addLineToDataImage(line);
 
-                    /* put it in data image - validat DATA and code it in binary 
-                    */
-                    addLineToDataImage(line);
+                    if (error->code == INVALID_STRING)
+                    {
+                        printError(*error, &lineHasError);
+                        continue;
+                    }
 
-                    /* increase DC and continue 
-                    */
                     DC += (line->directive->byteMultiplier * line->numberOfArgs);
                 }
                 else if (strcmp(line->directive->name, ".asciz") == 0)
                 {
-                    /* string directive */
-                    if (line->label)
-                    {
-                        /* put it in symbols table with value DC */
-                        addLineToSymbolsTable(line->label, "data", DC);
-                    }
-                    /* put it in data image - validate DATA and code it in binary 
-                    */
+                    error = validateString(line->args[0]);
 
-                    addLineToDataImage(line);
-                    /* Increase DC and continue */
-                    DC += (strlen(line->args[0]) -1);
+                    if (error->code == INVALID_STRING)
+                    {
+                        error->lineNumber = line->index;
+                        error->message = line->args[0];
+                        printError(*error, &lineHasError);
+                        continue;
+                    }
+                    else
+                    {
+                        if (line->label)
+                        {
+                            addLineToSymbolsTable(line->label, "data", DC);
+                        }
+                        addLineToDataImage(line);
+
+                        DC += (strlen(line->args[0]) - 1);
+                    }
                 }
                 else if (strcmp(line->directive->name, ".entry") == 0)
                 {
-                    /* entry */
                     /* continue - line will be handeled in second round */
-                    lineText = readLine(file);
+                    parsedLine = line;
+                    PARSED_LINES[LINE_COUNTER] = parsedLine;
+                    LINE_COUNTER++;
                     continue;
                 }
                 else if (strcmp(line->directive->name, ".extern") == 0)
                 {
-                    /* external */
-                    /* put it's operand in symbols table with value 0 (zero) and attribute 'external' 
-                    */
+                    /*  if external directive 
+                         put it's operand in symbols table with value 0 (zero) 
+                         and attribute 'external' */
                     addLineToSymbolsTable(line->args[0], "external", 0);
                 }
             }
 
-            
-            printLine(line);
-            
+            parsedLine = line;
+            PARSED_LINES[LINE_COUNTER] = parsedLine;
+            LINE_COUNTER++;
 
-            lineText = readLine(file);
+
+        }
+        updateSymbolsTableAddress(IC);
+        updateDataTableAdress(IC);
+
+        if (lineHasError)
+        {
+            printf("\n~!~\t\tFOUND AN ERROR\t\t~!~\n\t\t\tSTOPING....\n");
+            return;
+        }
+        error = secondRound(fileName);
+        if (error->code != SUCCESS)
+        {
+            printError(*error, &lineHasError);
+            return;
         }
         printSymbolsTable();
-        
+        printCodeImage();
         printDataImage();
-        
+
+        resetDataStructures();
+        PARSED_LINES = NULL;
+        LINE_COUNTER = 0;
+
     }
 }
 
-void printLine(Line *line)
+Error *secondRound(char *filename)
 {
-    int i;
+    int i = 0;
+    Error *error = calloc(1, sizeof(Error));
+    Line line;
+    Boolean hasError = FALSE;
 
-    printf("\n***************************************************\n");
-    printf("line number: %d\n", line->index);
-    printf("Address: %d\n", line->address);
-    if (line->label)
+    while (i < LINE_COUNTER)
     {
-        printf("label: %s\n", line->label);
-    }
-    if (line->isCommand)
-    {
-        printf("command: %s\n", line->command->name);
-    }
-    else if (line->isDirective)
-    {
-        printf("directive: %s\n", line->directive->name);
-    }
-    printf("number of args: %d\n", line->numberOfArgs);
-    if ((line->numberOfArgs) > 0)
-    {
-        printf("args: [ ");
-        for (i = 0; i < (line->numberOfArgs); i++)
+        line = *PARSED_LINES[i];
+
+        if (line.label)
         {
-            printf("%s", line->args[i]);
-            if (i < (line->numberOfArgs - 1))
+            i++;
+            continue;
+        }
+        if (line.isDirective)
+        {
+            if (strcmp(PARSED_LINES[i]->directive->name, ".entry") == 0)
             {
-                printf(", ");
+                if (symbolExists(PARSED_LINES[i]->operands[0]->valString))
+                {
+                    addAttributeToSYmbol(PARSED_LINES[i]->operands[0]->valString, "entry");
+                }
+                else
+                {
+                    error->code = SYMBOL_NOT_FOUND;
+                    error->lineNumber = PARSED_LINES[i]->index;
+                    printError(*error, &hasError);
+                }
+            }
+            else
+            {
+                i++;
+                continue;
             }
         }
-        printf(" ]\n");
+        else if (PARSED_LINES[i]->isCommand)
+        {
+            /* update J type commands */
+            if (PARSED_LINES[i]->command->type == J)
+            {
+                if (PARSED_LINES[i]->command->opcode == 63)
+                {
+                    i++;
+                    continue;
+                }
+                else
+                {
+                    updateJCommandAddress(PARSED_LINES[i]->index, PARSED_LINES[i]->args[0]);
+                }
+            }
+            else if ((PARSED_LINES[i]->command->type == I))
+            {
+
+                /* update I type commands */
+                if (((PARSED_LINES[i]->command->opcode >= 15) && (PARSED_LINES[i]->command->opcode <= 18)))
+                {
+                    error = updateICommandAddress(PARSED_LINES[i]->index, PARSED_LINES[i]->operands[2]->valString);
+
+                    if (error->code != SUCCESS)
+                    {
+                        error->lineNumber = PARSED_LINES[i]->index;
+                        printError(*error, &hasError);
+                        i++;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        i++;
+    }
+    if (hasError)
+    {
+        printf("Found Errors...Stoping..\n");
+        return error;
+    }
+    else
+    {
+        error->code = SUCCESS;
+        return error;
     }
 }
