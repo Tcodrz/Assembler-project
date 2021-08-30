@@ -1,6 +1,7 @@
 {
     "C_Cpp.errorSquiggles": "Disabled",
     "files.associations": {
-        "data_structures.h": "c"
+        "data_structures.h": "c",
+        "error_handler.h": "c"
     }
 }

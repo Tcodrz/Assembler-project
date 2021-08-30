@@ -5,6 +5,11 @@ Error *secondRound(char *filename);
 Line **PARSED_LINES = NULL;
 static int LINE_COUNTER = 0;
 
+/*
+    Parse one file 
+    scan the file once and build a list of parsed lines
+    if no errors during the scan it will call second round function with the list of parsed commands
+*/
 void parseFile(char *fileName)
 {
     int IC = INIT_IC;
@@ -36,7 +41,7 @@ void parseFile(char *fileName)
 
             if (strlen(lineText) > LINE_SIZE)
             {
-                error->code  = MAX_LINE_SIZE;
+                error->code = MAX_LINE_SIZE;
                 error->lineNumber = lineCounter;
                 printError(*error, &lineHasError);
                 continue;
@@ -44,11 +49,11 @@ void parseFile(char *fileName)
 
             if (lineIsEmpty(lineText) || lineIsComment(lineText))
             {
-                printf("%d - EMPTY OR COMMAND\n", lineCounter);
                 continue;
             }
 
-            line = parseLine(lineText, lineCounter);
+
+            line = parseLine(lineText, lineCounter); /* text beeing parsed into Line Struct */
             line->index = lineCounter;
 
             if (line->hasError)
@@ -67,7 +72,6 @@ void parseFile(char *fileName)
 
             if (line->isCommand)
             {
-                /* TODO: Check number of allowed operands */
                 if (line->label)
                 {
                     error = addLineToSymbolsTable(line->label, "code", IC);
@@ -81,7 +85,13 @@ void parseFile(char *fileName)
 
                 line->address = IC;
                 IC += 4;
-                addLineToCodeImage(line);
+
+                error = addLineToCodeImage(line);
+                if (error->code != SUCCESS)
+                {
+                    printError(*error, &lineHasError);
+                    continue;
+                }
             }
             else if (line->isDirective)
             {
@@ -108,12 +118,12 @@ void parseFile(char *fileName)
                 }
                 else if (strcmp(line->directive->name, ".asciz") == 0)
                 {
-                    error = validateString(line->args[0]);
+                    error = validateString(line->operands[0].valString);
 
                     if (error->code == INVALID_STRING)
                     {
                         error->lineNumber = line->index;
-                        error->message = line->args[0];
+                        error->message = line->operands[0].valString;
                         printError(*error, &lineHasError);
                         continue;
                     }
@@ -125,7 +135,7 @@ void parseFile(char *fileName)
                         }
                         addLineToDataImage(line);
 
-                        DC += (strlen(line->args[0]) - 1);
+                        DC += (strlen(line->operands[0].valString) - 1);
                     }
                 }
                 else if (strcmp(line->directive->name, ".entry") == 0)
@@ -141,22 +151,19 @@ void parseFile(char *fileName)
                     /*  if external directive 
                          put it's operand in symbols table with value 0 (zero) 
                          and attribute 'external' */
-                    addLineToSymbolsTable(line->args[0], "external", 0);
+                    addLineToSymbolsTable(line->operands[0].valString, "external", 0);
                 }
             }
 
             parsedLine = line;
             PARSED_LINES[LINE_COUNTER] = parsedLine;
             LINE_COUNTER++;
-
-
         }
         updateSymbolsTableAddress(IC);
         updateDataTableAdress(IC);
 
         if (lineHasError)
         {
-            printf("\n~!~\t\tFOUND AN ERROR\t\t~!~\n\t\t\tSTOPING....\n");
             return;
         }
         error = secondRound(fileName);
@@ -165,17 +172,13 @@ void parseFile(char *fileName)
             printError(*error, &lineHasError);
             return;
         }
-        printSymbolsTable();
-        printCodeImage();
-        printDataImage();
 
-        writeFiles(IC, DC, fileName);
+        printMemoryImage(IC, DC, fileName);
 
         resetDataStructures();
         free(PARSED_LINES);
         PARSED_LINES = NULL;
         LINE_COUNTER = 0;
-
     }
 }
 
@@ -183,25 +186,27 @@ Error *secondRound(char *filename)
 {
     int i = 0;
     Error *error = calloc(1, sizeof(Error));
-    Line line;
+    Line *line;
     Boolean hasError = FALSE;
+
 
     while (i < LINE_COUNTER)
     {
-        line = *PARSED_LINES[i];
+        line = PARSED_LINES[i];
 
-        if (line.label)
+        if (line->label)
         {
             i++;
             continue;
         }
-        if (line.isDirective)
+        if (line->isDirective)
         {
             if (strcmp(PARSED_LINES[i]->directive->name, ".entry") == 0)
             {
-                if (symbolExists(PARSED_LINES[i]->operands[0]->valString))
+
+                if (symbolExists(PARSED_LINES[i]->operands[0].valString))
                 {
-                    addAttributeToSYmbol(PARSED_LINES[i]->operands[0]->valString, "entry");
+                    addAttributeToSYmbol(PARSED_LINES[i]->operands[0].valString, "entry");
                     addLineToEntryList(PARSED_LINES[i]);
                 }
                 else
@@ -210,6 +215,7 @@ Error *secondRound(char *filename)
                     error->lineNumber = PARSED_LINES[i]->index;
                     printError(*error, &hasError);
                 }
+
             }
             else
             {
@@ -229,7 +235,7 @@ Error *secondRound(char *filename)
                 }
                 else
                 {
-                    updateJCommandAddress(PARSED_LINES[i]->index, PARSED_LINES[i]->args[0]);
+                    updateJCommandAddress(PARSED_LINES[i]->index, PARSED_LINES[i]->operands[0].valString);
                 }
             }
             else if ((PARSED_LINES[i]->command->type == I))
@@ -238,7 +244,7 @@ Error *secondRound(char *filename)
                 /* update I type commands */
                 if (((PARSED_LINES[i]->command->opcode >= 15) && (PARSED_LINES[i]->command->opcode <= 18)))
                 {
-                    error = updateICommandAddress(PARSED_LINES[i]->index, PARSED_LINES[i]->operands[2]->valString);
+                    error = updateICommandAddress(PARSED_LINES[i]->index, PARSED_LINES[i]->operands[2].valString);
 
                     if (error->code != SUCCESS)
                     {

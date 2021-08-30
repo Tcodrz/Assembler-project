@@ -20,6 +20,7 @@ typedef struct
     CommandType type;
     int funct;
     int opcode;
+    int numberOfAllowedOperands;
 } Command;
 
 typedef struct
@@ -37,6 +38,14 @@ typedef struct
     char *valString;
 } Operand;
 
+typedef struct 
+{
+    Operand * operands;
+    int size;
+    Boolean hasError;
+} Operands;
+
+
 typedef struct
 {
     int index;
@@ -50,7 +59,7 @@ typedef struct
     Boolean isCommand;
     Boolean isDirective;
     Boolean hasError;
-    Operand **operands;
+    Operand *operands;
 } Line;
 
 typedef struct
@@ -86,33 +95,33 @@ typedef struct
 
 static const Command COMMANDS[] = {
 /*   Name     Type   Funct  Opcode */
-    {"add",    R,     1,      0},
-    {"sub",    R,     2,      0},
-    {"and",    R,     3,      0},
-    {"or",     R,     4,      0},
-    {"nor",    R,     5,      0},
-    {"move",   R,     1,      1},
-    {"mvhi",   R,     2,      1},
-    {"mvlo",   R,     3,      1},
-    {"addi",   I,     0,     10},
-    {"subi",   I,     0,     11},
-    {"andi",   I,     0,     12},
-    {"ori",    I,     0,     13},
-    {"nori",   I,     0,     14},
-    {"bne",    I,     0,     15},
-    {"beq",    I,     0,     16},
-    {"blt",    I,     0,     17},
-    {"bgt",    I,     0,     18},
-    {"lb",     I,     0,     19},
-    {"sb",     I,     0,     20},
-    {"lw",     I,     0,     21},
-    {"sw",     I,     0,     22},
-    {"lh",     I,     0,     23},
-    {"sh",     I,     0,     24},
-    {"jmp",    J,     0,     30},
-    {"la",     J,     0,     31},
-    {"call",   J,     0,     32},
-    {"stop",   J,     0,     63},
+    {"add",    R,     1,      0, 3},
+    {"sub",    R,     2,      0, 3},
+    {"and",    R,     3,      0, 3},
+    {"or",     R,     4,      0, 3},
+    {"nor",    R,     5,      0, 3},
+    {"move",   R,     1,      1, 2},
+    {"mvhi",   R,     2,      1, 2},
+    {"mvlo",   R,     3,      1, 2},
+    {"addi",   I,     0,     10, 3},
+    {"subi",   I,     0,     11, 3},
+    {"andi",   I,     0,     12, 3},
+    {"ori",    I,     0,     13, 3},
+    {"nori",   I,     0,     14, 3},
+    {"bne",    I,     0,     15, 3},
+    {"beq",    I,     0,     16, 3},
+    {"blt",    I,     0,     17, 3},
+    {"bgt",    I,     0,     18, 3},
+    {"lb",     I,     0,     19, 3},
+    {"sb",     I,     0,     20, 3},
+    {"lw",     I,     0,     21, 3},
+    {"sw",     I,     0,     22, 3},
+    {"lh",     I,     0,     23, 3},
+    {"sh",     I,     0,     24, 3},
+    {"jmp",    J,     0,     30, 1},
+    {"la",     J,     0,     31, 1},
+    {"call",   J,     0,     32, 1},
+    {"stop",   J,     0,     63, 0},
 };
 
 static const Directive DIRECTIVES[] = {
@@ -126,9 +135,14 @@ static const Directive DIRECTIVES[] = {
 
 
 
+
+/***************************************************/
+/*              FUNCTION DECLERATIONS              */
+/***************************************************/
+
 Error *addLineToSymbolsTable(char *name, char *attr, int value);
 
-void addLineToCodeImage(Line *line);
+Error * addLineToCodeImage(Line *line);
 
 Error * addLineToDataImage(Line *line);
 
@@ -190,6 +204,16 @@ Line *parseLine(char * line, int lineNumber);
 
 void parseFile(char *fileName);
 
-void writeFiles(int ic, int dc, char * filename);
+void writeFiles(DataImage** DATA_IMAGE, int DATA_COUNTER, CodeRow** CODE_IMAGE, int CODE_COUNTER, ExternalCommand** EXTERNAL_CMDS, int EXTERNAL_COUNTER, ExternalCommand** ENTRY_CMDS, int ENTRY_COUNTER, int ic, int dc, char *filename);
 
 void addLineToEntryList(Line * line);
+
+void printMemoryImage(int ic, int dc, char * filename);
+
+char *numberToBinary(int number, int numberOfBits);
+
+char *charToBinary(char c);
+
+int getLabelAddress(char *label);
+
+Boolean isExternalSymbol(char *symbolName);

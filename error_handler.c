@@ -10,8 +10,6 @@ void printError(Error error, Boolean * hasError)
         filename = (char *)calloc(strlen(error.filename) + 1, sizeof(char));
         strcpy(filename, error.filename);
         filename[-1] = '\0';
-
-        printf("Current File: \'%s\'\n\n", filename);
         return;
     }
     else if (error.code == FINISH_FILE)
@@ -47,6 +45,9 @@ void printError(Error error, Boolean * hasError)
     case EMPTY_OPERAND:
         printf("Invalid operand at file '%s' line %d", filename, error.lineNumber);
         break;
+    case INVALID_OPERNAD:
+        printf("Invalid operand at file '%s' line %d", filename, error.lineNumber);
+        break;
     case INVALID_STRING:
         printf("Invalid string - %s at file %s line %d", error.message, filename, error.lineNumber);
         break;
@@ -61,6 +62,12 @@ void printError(Error error, Boolean * hasError)
         break;
     case CODE_ROW_NOT_FOUND:
         printf("Couldnt find code row at file '%s' line %d", filename, error.lineNumber);
+        break;
+    case REGISTRY_OUT_OF_RANGE:
+        printf("Invalid value of registry provided at file '%s' line %d", filename, error.lineNumber);
+        break;
+    case NUMBER_OF_OPERANDS:
+        printf("Incompatible number of arguments '%s' line %d", filename, error.lineNumber);
         break;
     case EXTERNAL_LABEL_IN_CONDITIONAL_CMD:
         printf("Using external label in conditional command is not allowed at file '%s' line %d", filename, error.lineNumber);

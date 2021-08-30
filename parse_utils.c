@@ -2,33 +2,6 @@
 
 static const char *RESERVED_KEYWORDS[] = {"add", "sub", "and", "or", "nor", "move", "mvhi", "mvlo", "addi", "subi", "andi", "ori", "nori", "bne", "beq", "blt", "bgt", "lb", "sb", "lw", "sw", "lh", "sh", "jmp", "la", "call", "stop", "asciz", "db", "dh", "dw", "entry", "extern"};
 
-/* reads one line and return it as a string 
-char *readLine(FILE *file)
-{
-    char c;
-    int count = 0;
-    char line[LINE_SIZE];
-    char *finishedLine = NULL;
-    printf("INSIDE READLINE\n\n");
-
-    while ((c = fgetc(file)) != '\n')
-    {
-        if (c == EOF)
-        {
-            return NULL;
-        }
-        strncat(line, &c, 1);
-        count++;
-    }
-
-    if (count <= LINE_SIZE)
-    {
-        finishedLine = calloc(strlen(line), sizeof(char));
-        strcpy(finishedLine, line);
-    }
-    return finishedLine;
-}
-*/
 
 /* Return true if line is empty */
 Boolean lineIsEmpty(char *line)
@@ -75,6 +48,7 @@ Command *getCommand(char *commandName)
             command->name = COMMANDS[i].name;
             command->opcode = COMMANDS[i].opcode;
             command->type = COMMANDS[i].type;
+            command->numberOfAllowedOperands = COMMANDS[i].numberOfAllowedOperands;
             break;
         }
 
